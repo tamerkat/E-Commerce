@@ -1,0 +1,3 @@
+name: <mahamed taha>
+email: <mahad10tah@gmail.com>
+discription: <This E-Commerce project is an online platform designed to provide a seamless shopping experience for users looking to purchase clothes for kids, men, and women. The website allows users to browse a variety of clothing items, add products to their cart. The platform includes a user-friendly interface built with modern web technologies, offering responsive design and smooth interactions. Additionally, an admin panel is available to manage inventory, update product listings, and monitor sales, providing full control over the store’s operations.>
