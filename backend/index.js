@@ -41,13 +41,20 @@ app.get('/', (req, res) => {
 })
 
 // creating Upload Endpoint for images
-app.use('./images', express.static('upload/images'))
+app.use('/images', express.static('upload/images')); // Correct the path here
+
 app.post('/upload', upload.single('product'), (req, res) => {
+    // Check if the file is uploaded correctly
+    if (!req.file) {
+        return res.status(400).json({ success: 0, message: 'File upload failed' });
+    }
+
+    // Respond with success and the image URL
     res.json({
         success: 1,
-        image_url: `http://localhost:${port}/images/${req.file.filename}`
-    })
-})
+        image_url: `http://localhost:${port}/images/${req.file.filename}` // Ensure the image URL is correct
+    });
+});
 
 
 
@@ -106,13 +113,13 @@ app.post('/addproduct', async (req, res) => {
         category: req.body.category,
         new_price: req.body.new_price,
         old_price: req.body.old_price,
-    });
+    })
     try {
         await product.save();
         console.log('Saved product:', product);
         res.json({
             success: true,
-            product: product,
+            name: req.body.name,
         });
     } catch (error) {
         console.error('Error saving product:', error);
@@ -138,9 +145,178 @@ app.post('/removeproduct', async (req, res) => {
 //  api for getall products
 app.get('/allproduct', async (req, res) => {
     let products = await Product.find({});
-    console.log('allproduct fetched')
     res.send(products)
 })
+
+
+
+// shema creating for user model
+const Users = mongoose.model('Users', {
+    name: {
+        type: String,
+    },
+    email: {
+        type: String,
+        unique: true,
+    },
+    password: {
+        type: String,
+    },
+    cartData: {
+        type: Object,
+    },
+    date: {
+        type: Date,
+        default: Date.now,
+    }
+})
+
+// api for user registration
+app.post('/signup', async (req, res) => {
+    let check = await Users.findOne({email: req.body.email});
+    if (check) {
+        return res.status(400).json({
+            success: false,
+            errors: 'existing user found with same email address'
+        })
+    }
+    let cart = {}
+    for (let i = 0; i < 300; i++) {
+        cart[i] = 0
+    }
+    const user = new Users({
+        name: req.body.name,
+        email: req.body.email,
+        password: req.body.password,
+        cartData: cart,
+    })
+    await user.save();
+
+    const data = {
+        user: {
+            id: user.id
+        }
+    }
+
+    const token = jwt.sign(data, 'secret_ecom')
+    res.json({
+        success: true,
+        token
+    })
+})
+
+
+
+// creating end point 
+app.post('/login', async (req, res) => {
+    let user = await Users.findOne({email: req.body.email})
+    if (user) {
+        const isMatch = req.body.password === user.password
+        if (isMatch) {
+            const data = {
+                user: {
+                    id: user.id
+                }
+            }
+            const token = jwt.sign(data, 'secret_ecom')
+            res.json({
+                success: true,
+                token
+            })
+        }
+        else {
+            res.json({
+                success: false,
+                errors: 'Invalid password',
+            })
+        }
+    }
+    else {
+        res.json({
+            success: false,
+            errors: 'Invalid Email Id',
+        })
+    }
+})
+
+
+
+
+// creating End point new collectiom
+app.get('/newcollection', async (req, res) => {
+    let products = await Product.find({})
+    let newcollection = products.slice(1).slice(-8)
+    res.send(newcollection)
+})
+
+
+// popular in women
+app.get('/popular', async (req, res) => {
+    let products = await Product.find({category: 'women'})
+    let popular = products.slice(0, 4)
+    res.send(popular)
+})
+
+
+
+// midleware
+const fetchUser = async (req, res, next) => {
+    const token = req.header('auth-token')
+    if (!token) {
+        res.status(401).send({
+            errors: 'please authenticate using valied token'
+        })
+    }
+    else {
+        try {
+            const data = jwt.verify(token, 'secret_ecom')
+            req.user = data.user
+            next()
+        } catch (error) {
+            res.status(401).send({
+                errors: 'please authenticate using a valied token'
+            })
+        }
+    }
+}
+
+
+
+
+// certing addcart
+app.post('/addcart', fetchUser, async (req, res) => {
+    console.log('removed', req.body.itemId)
+
+    let userData = await Users.findOne({_id: req.user.id})
+    userData.cartData[req.body.itemId] += 1
+    await Users.findOneAndUpdate({_id: req.user.id}, {cartData: userData.cartData})
+
+    res.send("Added")
+})
+
+
+
+// remove product
+app.post('/removecart', fetchUser, async (req, res) => {
+    console.log('removed', req.body.itemId)
+    let userData = await Users.findOne({_id: req.user.id})
+
+    if (userData.cartData[req.body.itemId] > 0) {
+        userData.cartData[req.body.itemId] -= 1
+        await Users.findOneAndUpdate({_id: req.user.id}, {cartData: userData.cartData})
+    }
+
+    res.send("removed")
+})
+
+
+
+// get cart data
+app.post('/getcart', fetchUser, async (req, res) => {
+    let userData = await Users.findOne({_id: req.user.id})
+    res.json(userData.cartData)
+})
+
 
 
 
