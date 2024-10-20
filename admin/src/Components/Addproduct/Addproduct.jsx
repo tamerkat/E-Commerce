@@ -24,26 +24,46 @@ const Addproduct = () => {
     }
 
     const Add_product = async () => {
-        console.log(productDetails)
-        let responeData;
-        let product = productDetails;
-
-        let formData = new FormData()
-        formData.append('product', image);
-
-        await fetch('http://localhost:4000/upload', {
-            method: 'POST',
-            headers: {
-                Accept: 'application/json',
-            },
-            body: formData,
-        }).then((resp) => resp.json()).then((data) => {responeData = data})
-
-        if (responeData.success){
-            product.image = responeData.image_url;
-            console.log(product);
-        }
-    }
+      try {
+          console.log(productDetails);
+          let responseData;
+          let product = productDetails;
+  
+          let formData = new FormData();
+          formData.append('product', image);
+  
+          const imageResponse = await fetch('http://localhost:4000/upload', {
+              method: 'POST',
+              headers: {
+                  Accept: 'application/json',
+              },
+              body: formData,
+          });
+  
+          responseData = await imageResponse.json();
+  
+          if (responseData.success) {
+              product.image = responseData.image_url;
+              console.log(product);
+  
+              const productResponse = await fetch('http://localhost:4000/addproduct', {
+                  method: 'POST',
+                  headers: {
+                      Accept: 'application/json',
+                      'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(product),
+              });
+  
+              const productData = await productResponse.json();
+              productData.success ? alert('Product Added') : alert('Failed to add product');
+          }
+      } catch (error) {
+          console.error('Error:', error);
+          alert('Failed to add product');
+      }
+  };
+  
 
   return (
     <div className='addproduct'>
