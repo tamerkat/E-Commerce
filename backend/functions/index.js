@@ -1,5 +1,6 @@
 const express = require('express')
 const app = express()
+const serverless = require("serverless-http");
 const mongoose = require('mongoose')
 const jwt = require('jsonwebtoken')
 const multer = require('multer')
@@ -26,7 +27,7 @@ mongoose.connect("mongodb+srv://tamerkat:007007@cluster0.o4jhs.mongodb.net/produ
 
 // image storage engine
 const storage = multer.diskStorage({
-    destination: './upload/images',
+    destination: './dist/upload/images',
     filename: (req, file, cb) => {
         return cb(null, `${file.fieldname}_${Date.now()}${path.extname(file.originalname)}`)
     }
@@ -36,14 +37,14 @@ const upload = multer({ storage: storage })
 
 
 // Api Creation
-app.get('/', (req, res) => {
+app.get('/.netlify/functions/index/', (req, res) => {
     res.send('express app is running')
 })
 
 // creating Upload Endpoint for images
 app.use('/images', express.static('upload/images')); // Correct the path here
 
-app.post('/upload', upload.single('product'), (req, res) => {
+app.post('/.netlify/functions/index/upload', upload.single('product'), (req, res) => {
     // Check if the file is uploaded correctly
     if (!req.file) {
         return res.status(400).json({ success: 0, message: 'File upload failed' });
@@ -95,7 +96,7 @@ const Product = mongoose.model('Product',{
 })
 
 // api add product
-app.post('/addproduct', async (req, res) => {
+app.post('/.netlify/functions/index/addproduct', async (req, res) => {
     let products = await Product.find({});
     let id;
     if (products.length > 0){
@@ -130,7 +131,7 @@ app.post('/addproduct', async (req, res) => {
 
 
 // api del product
-app.post('/removeproduct', async (req, res) => {
+app.post('/.netlify/functions/index/removeproduct', async (req, res) => {
     await Product.findOneAndDelete({id:req.body.id})
     console.log("Removed")
     res.json({
@@ -143,7 +144,7 @@ app.post('/removeproduct', async (req, res) => {
 
 
 //  api for getall products
-app.get('/allproduct', async (req, res) => {
+app.get('/.netlify/functions/index/allproduct', async (req, res) => {
     let products = await Product.find({});
     res.send(products)
 })
@@ -172,7 +173,7 @@ const Users = mongoose.model('Users', {
 })
 
 // api for user registration
-app.post('/signup', async (req, res) => {
+app.post('/.netlify/functions/index/signup', async (req, res) => {
     let check = await Users.findOne({email: req.body.email});
     if (check) {
         return res.status(400).json({
@@ -208,7 +209,7 @@ app.post('/signup', async (req, res) => {
 
 
 // creating end point 
-app.post('/login', async (req, res) => {
+app.post('/.netlify/functions/index/login', async (req, res) => {
     let user = await Users.findOne({email: req.body.email})
     if (user) {
         const isMatch = req.body.password === user.password
@@ -243,7 +244,7 @@ app.post('/login', async (req, res) => {
 
 
 // creating End point new collectiom
-app.get('/newcollection', async (req, res) => {
+app.get('/.netlify/functions/index/newcollection', async (req, res) => {
     let products = await Product.find({})
     let newcollection = products.slice(1).slice(-8)
     res.send(newcollection)
@@ -251,7 +252,7 @@ app.get('/newcollection', async (req, res) => {
 
 
 // popular in women
-app.get('/popular', async (req, res) => {
+app.get('/.netlify/functions/index/popular', async (req, res) => {
     let products = await Product.find({category: 'women'})
     let popular = products.slice(0, 4)
     res.send(popular)
@@ -284,7 +285,7 @@ const fetchUser = async (req, res, next) => {
 
 
 // certing addcart
-app.post('/addcart', fetchUser, async (req, res) => {
+app.post('/.netlify/functions/index/addcart', fetchUser, async (req, res) => {
     console.log('removed', req.body.itemId)
 
     let userData = await Users.findOne({_id: req.user.id})
@@ -297,7 +298,7 @@ app.post('/addcart', fetchUser, async (req, res) => {
 
 
 // remove product
-app.post('/removecart', fetchUser, async (req, res) => {
+app.post('/.netlify/functions/index/removecart', fetchUser, async (req, res) => {
     console.log('removed', req.body.itemId)
     let userData = await Users.findOne({_id: req.user.id})
 
@@ -312,7 +313,7 @@ app.post('/removecart', fetchUser, async (req, res) => {
 
 
 // get cart data
-app.post('/getcart', fetchUser, async (req, res) => {
+app.post('/.netlify/functions/index/getcart', fetchUser, async (req, res) => {
     let userData = await Users.findOne({_id: req.user.id})
     res.json(userData.cartData)
 })
@@ -320,12 +321,4 @@ app.post('/getcart', fetchUser, async (req, res) => {
 
 
 
-// run server
-const port = 4000;
-app.listen(port, (error) => {
-    if (!error){
-        console.log(`Server running on port ${port}`)
-    }else{
-        console.log(`Error ${error}`)
-    }
-})
+module.exports.handler = serverless(app);
